@@ -73,7 +73,7 @@ class ViewController: UIViewController {
 extension ViewController : UICollectionViewDelegate, UICollectionViewDataSource {
     //返回有多少个cell
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return 999
+        return 99
     }
     //初始化cell
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {

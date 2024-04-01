@@ -92,6 +92,8 @@ class YLMultiplePanGesture : UIPanGestureRecognizer {
     public var autoScrollViewFlag : Bool = true
     ///是否正在自动滑动
     public var isAutoScrolling : Bool = false
+    ///上下滑动多少后开启自动滑动
+    public var moveYDistanceStartAutoScrolling : CGFloat = 50
     
     ///初始化参数 => 在每次结束手势时候自动调用
     public func initParameters(){
@@ -179,7 +181,7 @@ extension YLMultiplePanGesture {
             ///移动距离
             let moveYDistance = point.y - begintPoint.y
             //如果y轴移动超过50
-            if abs(moveYDistance) > 50 {
+            if abs(moveYDistance) > moveYDistanceStartAutoScrolling {
                 isAutoScrolling = true
             }
         }
@@ -396,18 +398,19 @@ extension YLMultiplePanGesture {
             let location = currentTouch.location(in: collection)
             ///是否移动成功的flag
             var moveFlag : Bool = true
+            
             //如果需要向上滑动
             if collection.needToMove(.top, currentPoint: location) {
-                collection.scrollViewMoveTo(direction: .top)
+                collection.scrollViewMoveTo(direction: .top, completion: collectionAutoMovingRecursionBlock)
             } else if collection.needToMove(.left, currentPoint: location) {
                 //如果需要向左滑动
-                collection.scrollViewMoveTo(direction: .left)
+                collection.scrollViewMoveTo(direction: .left, completion: collectionAutoMovingRecursionBlock)
             } else if collection.needToMove(.bottom, currentPoint: location) {
                 //如果需要向下滑动
-                collection.scrollViewMoveTo(direction: .bottom)
+                collection.scrollViewMoveTo(direction: .bottom, completion: collectionAutoMovingRecursionBlock)
             } else if collection.needToMove(.right, currentPoint: location) {
                 //如果需要向右滑动
-                collection.scrollViewMoveTo(direction: .right)
+                collection.scrollViewMoveTo(direction: .right, completion: collectionAutoMovingRecursionBlock)
             } else {
                 //标记为未移动
                 moveFlag = false
@@ -416,20 +419,34 @@ extension YLMultiplePanGesture {
             if moveFlag {
                 //重新走一遍手势的代理
                 touchesMoved([currentTouch], with: .init())
+            } else {
+                //执行没有走动画的回调 => 递归
+                collectionAutoMovingRecursionBlock(false)
             }
         } else {
             //未开启
+            //执行没有走动画的回调 => 递归
+            collectionAutoMovingRecursionBlock(false)
         }
-        //开始滑动
-        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.3) { [weak self] in
-            guard let self else {
-                return
+    }
+    
+    /// 继续执行递归的block回调
+    /// - Parameter animate: 是否有执行动画
+    private func collectionAutoMovingRecursionBlock(_ animate:Bool){
+        //如果执行了动画
+        if animate {
+            //那么继续递归
+            collectionAutoMoving()
+        } else {
+            //没有执行动画0.2秒后递归
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.2) { [weak self] in
+                self?.collectionAutoMoving()
             }
-            //递归自动滑动
-            self.collectionAutoMoving()
         }
     }
 }
+
+
 
 //MARK: 指示这个cell是否已选中
 extension YLMultiplePanGesture {

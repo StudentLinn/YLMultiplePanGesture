@@ -92,6 +92,8 @@ class YLMultiplePanGesture : UIPanGestureRecognizer {
     public var autoScrollViewFlag : Bool = true
     ///是否正在自动滑动
     public var isAutoScrolling : Bool = false
+    ///上下滑动多少后开启自动滑动
+    public var moveYDistanceStartAutoScrolling : CGFloat = 50
     
     ///初始化参数 => 在每次结束手势时候自动调用
     public func initParameters(){
@@ -179,7 +181,7 @@ extension YLMultiplePanGesture {
             ///移动距离
             let moveYDistance = point.y - begintPoint.y
             //如果y轴移动超过50
-            if abs(moveYDistance) > 50 {
+            if abs(moveYDistance) > moveYDistanceStartAutoScrolling {
                 isAutoScrolling = true
             }
         }
