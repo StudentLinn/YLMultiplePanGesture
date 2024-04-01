@@ -62,24 +62,10 @@ class YLMultiplePanGesture : UIPanGestureRecognizer {
     public var collection : UICollectionView?
     ///多选代理
     public var multipleDelegate : YLMultiplePanGestureDelegate?
-    ///当前手指触摸点
-    public var currentTouch : UITouch?
+    ///当前手指触摸坐标
+    public var currentPoint : CGPoint?
     ///手势状态
-    public var multipleState : YLMultiplePanGestureState = .normal {
-        didSet {
-            switch multipleState {
-            case .normal:
-                //默认状态下允许滑动视图滑动
-                collection?.isScrollEnabled = true
-            case .multipling:
-                //多选状态下禁止滑动视图滑动
-                collection?.isScrollEnabled = false
-            case .scrolling:
-                //滑动状态下允许滑动视图滑动
-                collection?.isScrollEnabled = true
-            }
-        }
-    }
+    public var multipleState : YLMultiplePanGestureState = .normal 
     ///这个值指示开始的cell状态 => 需要在代理begin方法内修改
     public var beginCellIsChocie : Bool = false
     ///需要修改的数据
@@ -104,170 +90,168 @@ class YLMultiplePanGesture : UIPanGestureRecognizer {
         //删除当前坐标记录
         currentIndexPath = nil
         //删除当前手指触摸点
-        currentTouch = nil
+        currentPoint = nil
         shouldOperationIndexPath = []
         //关闭自动滑动
         isAutoScrolling = false
     }
+    
+    override init(target: Any?, action: Selector?) {
+        super.init(target: target, action: action)
+        
+        delegate = self
+        addTarget(self, action: #selector(multipleAction))
+    }
 }
 
-//MARK: 系统手势监听
+//MARK: 系统手势代理
+extension YLMultiplePanGesture : UIGestureRecognizerDelegate {
+    //是否允许多手势
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+}
+
+//MARK: 多选方法具体实现
 extension YLMultiplePanGesture {
-    //开始手势
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        super.touchesBegan(touches, with: event)
-        //未开启交互不执行
-        if !isMultipleEnabled {
-            return
-        }
-        ///点击位置
-        guard let touch = touches.first else { return }
-        //记录起始坐标
-        begintPoint = touch.location(in: collection)
-    }
-    //移动手势
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
-        super.touchesMoved(touches, with: event)
-        //未开启交互不执行
-        if !isMultipleEnabled {
-            return
-        }
-        //取消可选值
-        guard let touch = touches.first, let begintPoint, let collection else {
-            return
-        }
-        //获取当前移动坐标
-        let point = touch.location(in: collection)
-        //起始坐标,如果没有在cell中开始的话不启动多选  //当前滑动到的坐标
-        guard let beginIndexPath = collection.indexPathForItem(at: begintPoint), let movingIndexPath = collection.indexPathForItem(at: point) else {
-            return
-        }
-        //记录当前手势
-        currentTouch = touch
-        //如果未开启手势则开始判断
-        if multipleState == .normal {
-            ///间距
-            let rowPadding = movingIndexPath.row - beginIndexPath.row
-            ///组间距
-            let sectionPadding = movingIndexPath.section - beginIndexPath.section
-            //当前坐标与之前坐标没有改变
-            if rowPadding == 0 && sectionPadding == 0 {
-                //就不往下执行了
+    ///多选手势action
+    @objc private func multipleAction(_ pan:UIGestureRecognizer) {
+        //TODO: 手势开始
+        //手势开始
+        if pan.state == .began {
+            //未开启交互不执行
+            if !isMultipleEnabled {
                 return
-                //如果1 == row间距或者 == -1 并且 组间距为0
-            } else if (rowPadding == 1 || rowPadding == -1) && sectionPadding == 0 {
-                //进入多选状态
-                multipleState = .multipling
-                //更新当前cell默认是否选中
-                beginCellIsChocie = multipleDelegate?.multipleBeganCellSelected(fromIndex: beginIndexPath) ?? false
-                //根据当前偏移量设定是否
-                if rowPadding == -1 {
-                    //滑动方向为上
-                    moveDiretion = .top
-                } else if rowPadding == 1 {
-                    //滑动方向为下
-                    moveDiretion = .bottom
+            }
+            //记录起始坐标
+            begintPoint = pan.location(in: collection)
+            
+            //TODO: 手势改变
+        } else if pan.state == .changed {
+            //手势移动
+            //未开启交互不执行
+            if !isMultipleEnabled {
+                return
+            }
+            //取消可选值
+            guard let begintPoint, let collection else {
+                return
+            }
+            //获取当前移动坐标
+            let point = pan.location(in: collection)
+            //起始坐标,如果没有在cell中开始的话不启动多选  //当前滑动到的坐标
+            guard let beginIndexPath = collection.indexPathForItem(at: begintPoint), let movingIndexPath = collection.indexPathForItem(at: point) else {
+                return
+            }
+            //记录当前手势
+            currentPoint = point
+            //如果未开启手势则开始判断
+            if multipleState == .normal {
+                ///间距
+                let rowPadding = movingIndexPath.row - beginIndexPath.row
+                ///组间距
+                let sectionPadding = movingIndexPath.section - beginIndexPath.section
+                //当前坐标与之前坐标没有改变
+                if rowPadding == 0 && sectionPadding == 0 {
+                    //就不往下执行了
+                    return
+                    //如果1 == row间距或者 == -1 并且 组间距为0
+                } else if (rowPadding == 1 || rowPadding == -1) && sectionPadding == 0 {
+                    //进入多选状态
+                    multipleState = .multipling
+                    //更新当前cell默认是否选中
+                    beginCellIsChocie = multipleDelegate?.multipleBeganCellSelected(fromIndex: beginIndexPath) ?? false
+                    //根据当前偏移量设定是否
+                    if rowPadding == -1 {
+                        //滑动方向为上
+                        moveDiretion = .top
+                    } else if rowPadding == 1 {
+                        //滑动方向为下
+                        moveDiretion = .bottom
+                    }
+                    //开启自动滑动 => 触发条件 isAutoScrolling 等待y轴滑动超过50后开启
+                    collectionAutoMoving()
+                } else {
+                    //否则进入滑动状态
+                    multipleState = .scrolling
                 }
-                //开启自动滑动 => 触发条件 isAutoScrolling 等待y轴滑动超过50后开启
-                collectionAutoMoving()
-            } else {
-                //否则进入滑动状态
-                multipleState = .scrolling
             }
-        }
-        //如果当前未开启滑动
-        if !isAutoScrolling {
-            //执行判断逻辑
-            ///移动距离
-            let moveYDistance = point.y - begintPoint.y
-            //如果y轴移动超过50
-            if abs(moveYDistance) > moveYDistanceStartAutoScrolling {
-                isAutoScrolling = true
+            //如果当前未开启滑动
+            if !isAutoScrolling {
+                //执行判断逻辑
+                ///移动距离
+                let moveYDistance = point.y - begintPoint.y
+                //如果y轴移动超过50
+                if abs(moveYDistance) > moveYDistanceStartAutoScrolling {
+                    isAutoScrolling = true
+                }
             }
-        }
-        
-        //正在多选状态
-        if multipleState == .multipling {
-            //如果有当前坐标
-            if let currentIndexPath {
-                //说明上次已经选中过
-                //判断当前方向
-                if moveDiretion == .top {
-                    //当前是向上滑动
-                    //如果当前滑动到的位置小于上一次滑动的位置那么是正确的
-                    if movingIndexPath.row < currentIndexPath.row {
-                        //选中这部分数据
-                        choiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: movingIndexPath)
-                    } else if movingIndexPath.row > currentIndexPath.row {
-                        //需要取消选中
-                        //判断是否到了起始点
-                        if movingIndexPath.row >= beginIndexPath.row {
-                            //取消选中这部分的数据
-                            cancelChoiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: beginIndexPath)
-                            //选中从起始点到现在的数据
-                            choiceIndexPaths(beginIndexPath: beginIndexPath, endIndexPath: movingIndexPath)
-                            //修改方向
-                            moveDiretion = .bottom
-                        } else {
-                            //取消选中这部分的数据
-                            cancelChoiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: movingIndexPath)
+            
+            //正在多选状态
+            if multipleState == .multipling {
+                //如果有当前坐标
+                if let currentIndexPath {
+                    //说明上次已经选中过
+                    //判断当前方向
+                    if moveDiretion == .top {
+                        //当前是向上滑动
+                        //如果当前滑动到的位置小于上一次滑动的位置那么是正确的
+                        if movingIndexPath.row < currentIndexPath.row {
+                            //选中这部分数据
+                            choiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: movingIndexPath)
+                        } else if movingIndexPath.row > currentIndexPath.row {
+                            //需要取消选中
+                            //判断是否到了起始点
+                            if movingIndexPath.row >= beginIndexPath.row {
+                                //取消选中这部分的数据
+                                cancelChoiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: beginIndexPath)
+                                //选中从起始点到现在的数据
+                                choiceIndexPaths(beginIndexPath: beginIndexPath, endIndexPath: movingIndexPath)
+                                //修改方向
+                                moveDiretion = .bottom
+                            } else {
+                                //取消选中这部分的数据
+                                cancelChoiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: movingIndexPath)
+                            }
+                        }
+                    } else if moveDiretion == .bottom {
+                        //移动方向为下
+                        //如果当前滑动的位置大于上一次滑动的位置那么是正确的
+                        if movingIndexPath.row > currentIndexPath.row {
+                            //选中这部分数据
+                            choiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: movingIndexPath)
+                        } else if movingIndexPath.row < currentIndexPath.row {
+                            //需要反选
+                            //判断是否到了起始点
+                            if movingIndexPath.row <= beginIndexPath.row {
+                                //取消选中这部分的数据
+                                cancelChoiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: beginIndexPath)
+                                //选中从起始点到现在的数据
+                                choiceIndexPaths(beginIndexPath: beginIndexPath, endIndexPath: movingIndexPath)
+                                //修改方向
+                                moveDiretion = .top
+                            } else {
+                                //取消选中这部分的数据
+                                cancelChoiceIndexPaths(beginIndexPath: movingIndexPath, endIndexPath: currentIndexPath)
+                            }
                         }
                     }
-                } else if moveDiretion == .bottom {
-                    //移动方向为下
-                    //如果当前滑动的位置大于上一次滑动的位置那么是正确的
-                    if movingIndexPath.row > currentIndexPath.row {
-                        //选中这部分数据
-                        choiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: movingIndexPath)
-                    } else if movingIndexPath.row < currentIndexPath.row {
-                        //需要反选
-                        //判断是否到了起始点
-                        if movingIndexPath.row <= beginIndexPath.row {
-                            //取消选中这部分的数据
-                            cancelChoiceIndexPaths(beginIndexPath: currentIndexPath, endIndexPath: beginIndexPath)
-                            //选中从起始点到现在的数据
-                            choiceIndexPaths(beginIndexPath: beginIndexPath, endIndexPath: movingIndexPath)
-                            //修改方向
-                            moveDiretion = .top
-                        } else {
-                            //取消选中这部分的数据
-                            cancelChoiceIndexPaths(beginIndexPath: movingIndexPath, endIndexPath: currentIndexPath)
-                        }
-                    }
+                } else {
+                    //选中起始到现在的这一部分数据
+                    choiceIndexPaths(beginIndexPath: beginIndexPath, endIndexPath: movingIndexPath)
                 }
-            } else {
-                //选中起始到现在的这一部分数据
-                choiceIndexPaths(beginIndexPath: beginIndexPath, endIndexPath: movingIndexPath)
             }
+            //记录当前坐标为indexPath
+            currentIndexPath = movingIndexPath
+            
+            //TODO: 手势结束
+        } else if pan.state == .ended || pan.state == .failed || pan.state == .cancelled {
+            //结束手势
+            //代理传出完成回调
+            multipleDelegate?.multipleCompletion(shouldOperationIndexPath, shouldAppend: shouldOperationIndexNeedSelected)
+            //初始化参数
+            initParameters()
         }
-        //记录当前坐标为indexPath
-        currentIndexPath = movingIndexPath
-    }
-    
-    //结束手势
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
-        super.touchesEnded(touches, with: event)
-        //未开启交互不执行
-        if !isMultipleEnabled {
-            return
-        }
-        //代理传出完成回调
-        multipleDelegate?.multipleCompletion(shouldOperationIndexPath, shouldAppend: shouldOperationIndexNeedSelected)
-        //初始化参数
-        initParameters()
-    }
-    
-    //取消手势
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
-        super.touchesCancelled(touches, with: event)
-        //未开启交互不执行
-        if !isMultipleEnabled {
-            return
-        }
-        //代理传出完成回调
-        multipleDelegate?.multipleCompletion(shouldOperationIndexPath, shouldAppend: shouldOperationIndexNeedSelected)
-        //初始化参数
-        initParameters()
     }
 }
 
@@ -384,7 +368,7 @@ extension YLMultiplePanGesture {
             return
         }
         ///当前滑动
-        guard let currentTouch, let collection else {
+        guard let currentPoint, let collection else {
             return
         }
         //如果不开启滑动
@@ -395,7 +379,7 @@ extension YLMultiplePanGesture {
         //如果当前开启了自动滑动
         if isAutoScrolling {
             ///当前手势指向的坐标
-            let location = currentTouch.location(in: collection)
+            let location = currentPoint
             ///是否移动成功的flag
             var moveFlag : Bool = true
             
@@ -417,8 +401,8 @@ extension YLMultiplePanGesture {
             }
             //如果移动了
             if moveFlag {
-                //重新走一遍手势的代理
-                touchesMoved([currentTouch], with: .init())
+                //重新走一遍手势的action
+                multipleAction(self)
             } else {
                 //执行没有走动画的回调 => 递归
                 collectionAutoMovingRecursionBlock(false)

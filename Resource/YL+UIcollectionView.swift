@@ -22,52 +22,60 @@ public enum ScrollViewMoveDirection {
 //MARK: 在collectionView中扩展向上/下/左/右移动
 extension UICollectionView {
     /// 滑动,方向仅上下左右可用
-    /// - Parameter direction: 方向
-    public func scrollViewMoveTo(direction:UICollectionView.ScrollPosition) {
-        ///当前可见数组
-        var visibleIndex = indexPathsForVisibleItems
-        //排序
-        visibleIndex.sort { leftIndex, rightIndex in
-            return leftIndex.row < rightIndex.row
-        }
-        ///cell总数量
-        let itemCount = numberOfItems(inSection: visibleIndex.first?.section ?? 0)
-        //如果数量==0就不执行
-        if itemCount == 0 {
-            return
-        }
-        //如果数量
+    /// - Parameters:
+    ///   - direction: 方向 仅支持上下左右
+    ///   - distance: 距离
+    ///   - completion: 完成回调,传出是否有动画
+    /// - Returns: 是否执行了动画
+    public func scrollViewMoveTo(direction:UICollectionView.ScrollPosition,
+                                 distance:CGFloat = 30,
+                                 completion:((_ animate:Bool) -> Void)? = nil) {
+        ///最后所需移动到的点
+        var movePoint = contentOffset
         //判断传入的方向
         switch direction {
         case .top : //如果是向上移动
-            fallthrough //穿透，因为与向左一致
+            //向上移动对应的值
+            movePoint.y = movePoint.y - distance
         case .left : //如果是向左移动
-            //获取第一个数据
-            guard let first = visibleIndex.first else {
-                return
-            }
-            //判断当前是否还有向上移动的空间
-            if first.row == 0 && first.section == 0 {
-                return
-            } else {
-                //如果还能向上移动就向上移动1个坐标
-                scrollToItem(at: IndexPath(row: first.row - 1, section: first.section), at: direction, animated: true)
-            }
+            //向左移动对应的值
+            movePoint.x = movePoint.x - distance
         case .bottom : //如果是向下移动
-            fallthrough //穿透，因为与向右一致
+            //向下移动对应的值
+            movePoint.y = movePoint.y + distance
         case .right : //如果是向右移动
-            //获取最后一个数据
-            guard let last = visibleIndex.last else {
-                return
-            }
-            //判断当前是否还有向下移动的空间
-            if last.row >= itemCount - 1 {
-                return
-            } else {
-                //如果还能向下移动就移动1个坐标
-                scrollToItem(at: IndexPath(row: last.row + 1, section: last.section), at: direction, animated: true)
-            }
+            //向右移动对应的值
+            movePoint.x = movePoint.x + distance
         default : return
+        }
+        //判断该值是否可用,不可用的话修复为可用值
+        if movePoint.y < 0 {
+            movePoint.y = 0
+        }
+        if movePoint.x < 0 {
+            movePoint.x = 0
+        }
+        ///Y轴最大值
+        let maxY = contentSize.height - frame.height
+        ///X轴最大值
+        let maxX = contentSize.width - frame.width
+        if movePoint.y > maxY {
+            movePoint.y = maxY
+        }
+        if movePoint.x > maxX {
+            movePoint.x = maxX
+        }
+        
+        //如果有移动
+        if movePoint != contentOffset {
+            UIView.animate(withDuration: 0.1) { [weak self] in
+                self?.setContentOffset(movePoint, animated: false)
+            } completion: { success in
+                completion?(true)
+            }
+        } else {
+            //没有移动传出未执行动画
+            completion?(false)
         }
     }
 }

@@ -29,8 +29,6 @@ class ViewController: UIViewController {
         let pan = YLMultiplePanGesture(target: self, action: nil)
         //多选代理
         pan.multipleDelegate = self
-        //允许多手势
-        pan.delegate = self
         //传入collection
         pan.collection = collection
         return pan
@@ -40,6 +38,8 @@ class ViewController: UIViewController {
         let view = UICollectionView(frame: .zero, collectionViewLayout: sizeLayout)
         view.backgroundColor = .white
         view.register(testCell.self, forCellWithReuseIdentifier: "reuseId")
+//        //模拟有间距时候,测试滑动
+//        view.contentInset = .init(top: 10, left: 10, bottom: 10, right: 10)
         view.delegate = self
         view.dataSource = self
         return view
@@ -65,7 +65,8 @@ class ViewController: UIViewController {
             make.leading.trailing.equalToSuperview()
             make.bottom.equalToSuperview().offset(-30)
         }
-        collection.addGestureRecognizer(multiplePan)
+        //在collection的父类添加手势
+        view.addGestureRecognizer(multiplePan)
     }
 }
 
@@ -73,7 +74,7 @@ class ViewController: UIViewController {
 extension ViewController : UICollectionViewDelegate, UICollectionViewDataSource {
     //返回有多少个cell
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return 99
+        return 999
     }
     //初始化cell
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -144,11 +145,6 @@ extension ViewController : YLMultiplePanGestureDelegate, UIGestureRecognizerDele
         if let cell = collection.cellForItem(at: shouldChangeIndexPath) as? testCell {
             cell.isSelect = shouldSelect
         }
-    }
-    
-    //多手势
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        return true
     }
 }
 
