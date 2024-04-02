@@ -27,7 +27,7 @@ extension UICollectionView {
     ///   - distance: 距离
     ///   - completion: 完成回调,传出是否有动画
     /// - Returns: 是否执行了动画
-    public func scrollViewMoveTo(direction:UICollectionView.ScrollPosition,
+    public func scrollViewMoveTo(direction:ScrollViewMoveDirection,
                                  distance:CGFloat = 30,
                                  completion:((_ animate:Bool) -> Void)? = nil) {
         ///最后所需移动到的点
@@ -86,7 +86,7 @@ extension UICollectionView {
     /// - Parameter direction: 方向
     /// - Parameter currentPoint: 传入需要判断的触摸点
     /// - Returns: 返回是否需要移动
-    public func needToMove(_ direction:UICollectionView.ScrollPosition,
+    public func needToMove(_ direction:ScrollViewMoveDirection,
                            currentPoint:CGPoint) -> Bool {
         ///移动除的倍数
         let moveNeedScale:CGFloat = 5.0

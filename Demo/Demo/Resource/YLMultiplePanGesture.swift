@@ -22,7 +22,15 @@ import UIKit
     /// - Parameter shouldOperationIndexPath: 需要改变的数组
     /// - Parameter shouldChangeIndexPath: 将要改变的坐标
     /// - Parameter shouldSelect: 是否选中
-    @objc func shouldOperationIndexPathWillChange(_ shouldOperationIndexPath : [IndexPath],
+    @objc optional func shouldOperationIndexPathWillChange(_ shouldOperationIndexPath : [IndexPath],
+                                                           shouldChangeIndexPath : IndexPath,
+                                                           shouldSelect : Bool)
+    
+    /// 已经改变选中下标
+    /// - Parameter shouldOperationIndexPath: 需要改变的数组
+    /// - Parameter shouldChangeIndexPath: 将要改变的坐标
+    /// - Parameter shouldSelect: 是否选中
+    @objc func shouldOperationIndexPathDidChange(_ shouldOperationIndexPath : [IndexPath],
                                                            shouldChangeIndexPath : IndexPath,
                                                            shouldSelect : Bool)
     
@@ -53,7 +61,7 @@ class YLMultiplePanGesture : UIPanGestureRecognizer {
     ///当前坐标
     private var currentIndexPath : IndexPath?
     ///当前滑动方向(暂不支持左右)
-    private var moveDiretion : UICollectionView.ScrollPosition = .top
+    private var moveDiretion : ScrollViewMoveDirection = .top
     
     //MARK: 可访问属性
     ///是否允许多选交互 => 默认开启
@@ -274,10 +282,12 @@ extension YLMultiplePanGesture {
                     if !shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行修改状态
+                        //代理传出将要取消选中
+                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
                         //需要改变状态的话就添加进入数组中
                         shouldOperationIndexPath.append(changeIndexPath)
                         //代理传出取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
+                        multipleDelegate?.shouldOperationIndexPathDidChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
                     }
                 }
             }
@@ -295,10 +305,12 @@ extension YLMultiplePanGesture {
                     if !shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行修改状态
+                        //代理传出将要取消选中
+                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
                         //需要改变状态的话就添加进入数组中
                         shouldOperationIndexPath.append(changeIndexPath)
-                        //代理传出取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
+                        //代理传出已经取消选中
+                        multipleDelegate?.shouldOperationIndexPathDidChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
                     }
                 }
             }
@@ -322,12 +334,14 @@ extension YLMultiplePanGesture {
                     if shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行,否则不改变状态
+                        //代理传出将要取消选中
+                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
                         //需要改变状态的话就移除当前数据
                         shouldOperationIndexPath.removeAll { searchIndexPath in
                             return searchIndexPath == changeIndexPath
                         }
-                        //代理传出取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
+                        //代理传出已经取消选中
+                        multipleDelegate?.shouldOperationIndexPathDidChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
                     }
                 }
             }
@@ -345,12 +359,14 @@ extension YLMultiplePanGesture {
                     if shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行,否则不改变状态
+                        //代理传出将要取消选中
+                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
                         //需要改变状态的话就移除当前数据
                         shouldOperationIndexPath.removeAll { searchIndexPath in
                             return searchIndexPath == changeIndexPath
                         }
-                        //代理传出取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
+                        //代理传出已经取消选中
+                        multipleDelegate?.shouldOperationIndexPathDidChange(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
                     }
                 }
                 
@@ -435,7 +451,7 @@ extension YLMultiplePanGesture {
 //MARK: 指示这个cell是否已选中
 extension YLMultiplePanGesture {
     /// 获取这个cell,或者坐标是否被多选手势选中，二选一即可获取
-    /// - Returns: 是否被多选手势选中,为nil即未开启多选
+    /// - Returns: 是否被多选手势选中,为nil的两种可能 => 1.未开启多选 2.需要走外部判断
     public func getCellIsSelectFromMultiple(cell:UICollectionViewCell? = nil,
                                             getSelectIndexPath:IndexPath? = nil) -> Bool?{
         //未开启多选
@@ -450,13 +466,31 @@ extension YLMultiplePanGesture {
                     print("error => getCellIsSelectFromMultiple方法入参cell的indexPath获取不到")
                     return nil
                 }
-                return shouldOperationIndexPath.contains { searchIndexPath in
+                //是否修改了该数据
+                let multipleChangeCellSelect = shouldOperationIndexPath.contains { searchIndexPath in
                     return getSelectIndexPath == searchIndexPath
+                }
+                //如果修改了该数据
+                if multipleChangeCellSelect {
+                    //返回多选是选中?取消
+                    return shouldOperationIndexNeedSelected
+                } else {
+                    //否则返回空进入外部判断
+                    return nil
                 }
             } else if let getSelectIndexPath {
                 //如果入参为坐标
-                return shouldOperationIndexPath.contains { searchIndexPath in
+                //是否修改了该数据
+                let multipleChangeCellSelect = shouldOperationIndexPath.contains { searchIndexPath in
                     return getSelectIndexPath == searchIndexPath
+                }
+                //如果修改了该数据
+                if multipleChangeCellSelect {
+                    //返回多选是选中?取消
+                    return shouldOperationIndexNeedSelected
+                } else {
+                    //否则返回空进入外部判断
+                    return nil
                 }
             } else {
                 //如果没有入参就返回空
