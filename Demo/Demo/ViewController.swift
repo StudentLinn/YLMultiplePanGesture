@@ -114,6 +114,13 @@ extension ViewController : UICollectionViewDelegate, UICollectionViewDataSource 
 
 //MARK: 多选
 extension ViewController : YLMultiplePanGestureDelegate, UIGestureRecognizerDelegate {
+    //完成改变
+    func shouldOperationIndexPathDidChange(_ shouldOperationIndexPath: [IndexPath], shouldChangeIndexPath: IndexPath, shouldSelect: Bool) {
+        if let cell = collection.cellForItem(at: shouldChangeIndexPath) as? testCell {
+            cell.isSelect = shouldSelect
+        }
+    }
+    
     //开始滑动
     func multipleBeganCellSelected(fromIndex: IndexPath) -> Bool {
         (collection.cellForItem(at: fromIndex) as? testCell)?.isSelect ?? getSelectStateFromIndexPath(indexPath: fromIndex)
@@ -140,12 +147,12 @@ extension ViewController : YLMultiplePanGestureDelegate, UIGestureRecognizerDele
         }
     }
     
-    //将要改变
-    func shouldOperationIndexPathWillChange(_ shouldOperationIndexPath: [IndexPath], shouldChangeIndexPath: IndexPath, shouldSelect: Bool) {
-        if let cell = collection.cellForItem(at: shouldChangeIndexPath) as? testCell {
-            cell.isSelect = shouldSelect
-        }
-    }
+//    //将要改变
+//    func shouldOperationIndexPathWillChange(_ shouldOperationIndexPath: [IndexPath], shouldChangeIndexPath: IndexPath, shouldSelect: Bool) {
+//        if let cell = collection.cellForItem(at: shouldChangeIndexPath) as? testCell {
+//            cell.isSelect = shouldSelect
+//        }
+//    }
 }
 
 ///测试cell

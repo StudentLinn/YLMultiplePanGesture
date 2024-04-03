@@ -8,15 +8,15 @@
 import UIKit
 
 ///滑动方向
-public enum ScrollViewMoveDirection {
+@objc public enum ScrollViewMoveDirection : Int {
     ///向上
-    case top
+    case top = 0
     ///向左
-    case left
+    case left = 1
     ///向下
-    case bottom
+    case bottom = 2
     ///向右
-    case right
+    case right = 3
 }
 
 //MARK: 在collectionView中扩展向上/下/左/右移动

@@ -18,14 +18,6 @@ import UIKit
     /// - Returns: 当前是否已选中
     @objc func shouldReturnCellSelectedState(indexPath : IndexPath) -> Bool
     
-    /// 将要改变选中下标
-    /// - Parameter shouldOperationIndexPath: 需要改变的数组
-    /// - Parameter shouldChangeIndexPath: 将要改变的坐标
-    /// - Parameter shouldSelect: 是否选中
-    @objc optional func shouldOperationIndexPathWillChange(_ shouldOperationIndexPath : [IndexPath],
-                                                           shouldChangeIndexPath : IndexPath,
-                                                           shouldSelect : Bool)
-    
     /// 已经改变选中下标
     /// - Parameter shouldOperationIndexPath: 需要改变的数组
     /// - Parameter shouldChangeIndexPath: 将要改变的坐标
@@ -40,6 +32,14 @@ import UIKit
     ///   - shouldAppend: 需要添加?移除
     @objc func multipleCompletion(_ changeIndex : [IndexPath],
                                   shouldAppend : Bool)
+    
+    /// 将要执行自动滑动
+    /// - Parameter direction: 滑动方向
+    @objc optional func collectionWillAutoScroll(direction : ScrollViewMoveDirection)
+    
+    /// 是否允许自动滑动
+    /// - Parameter direction: 滑动方向
+    @objc optional func collectionShouldAutoScroll(direction : ScrollViewMoveDirection) -> Bool
 }
 
 ///多选手势状态
@@ -82,8 +82,6 @@ class YLMultiplePanGesture : UIPanGestureRecognizer {
     public var shouldOperationIndexNeedSelected : Bool {
         return !beginCellIsChocie
     }
-    ///自动滑动标记=>默认开启
-    public var autoScrollViewFlag : Bool = true
     ///是否正在自动滑动
     public var isAutoScrolling : Bool = false
     ///上下滑动多少后开启自动滑动
@@ -282,8 +280,6 @@ extension YLMultiplePanGesture {
                     if !shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行修改状态
-                        //代理传出将要取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
                         //需要改变状态的话就添加进入数组中
                         shouldOperationIndexPath.append(changeIndexPath)
                         //代理传出取消选中
@@ -305,8 +301,6 @@ extension YLMultiplePanGesture {
                     if !shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行修改状态
-                        //代理传出将要取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: shouldOperationIndexNeedSelected)
                         //需要改变状态的话就添加进入数组中
                         shouldOperationIndexPath.append(changeIndexPath)
                         //代理传出已经取消选中
@@ -334,8 +328,6 @@ extension YLMultiplePanGesture {
                     if shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行,否则不改变状态
-                        //代理传出将要取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
                         //需要改变状态的话就移除当前数据
                         shouldOperationIndexPath.removeAll { searchIndexPath in
                             return searchIndexPath == changeIndexPath
@@ -359,8 +351,6 @@ extension YLMultiplePanGesture {
                     if shouldOperationIndexPath.contains(where: { searchIndexPath in
                         return searchIndexPath == changeIndexPath
                     }) { //那么才执行,否则不改变状态
-                        //代理传出将要取消选中
-                        multipleDelegate?.shouldOperationIndexPathWillChange?(shouldOperationIndexPath, shouldChangeIndexPath: changeIndexPath, shouldSelect: !shouldOperationIndexNeedSelected)
                         //需要改变状态的话就移除当前数据
                         shouldOperationIndexPath.removeAll { searchIndexPath in
                             return searchIndexPath == changeIndexPath
@@ -387,11 +377,6 @@ extension YLMultiplePanGesture {
         guard let currentPoint, let collection else {
             return
         }
-        //如果不开启滑动
-        if !autoScrollViewFlag {
-            //不执行了
-            return
-        }
         //如果当前开启了自动滑动
         if isAutoScrolling {
             ///当前手势指向的坐标
@@ -401,16 +386,36 @@ extension YLMultiplePanGesture {
             
             //如果需要向上滑动
             if collection.needToMove(.top, currentPoint: location) {
-                collection.scrollViewMoveTo(direction: .top, completion: collectionAutoMovingRecursionBlock)
+                //代理传出将要滑动
+                multipleDelegate?.collectionWillAutoScroll?(direction: .top)
+                //代理设置如果允许滑动
+                if multipleDelegate?.collectionShouldAutoScroll?(direction: .top) ?? true {
+                    collection.scrollViewMoveTo(direction: .top, completion: collectionAutoMovingRecursionBlock)
+                }
             } else if collection.needToMove(.left, currentPoint: location) {
-                //如果需要向左滑动
-                collection.scrollViewMoveTo(direction: .left, completion: collectionAutoMovingRecursionBlock)
+                //代理传出将要滑动
+                multipleDelegate?.collectionWillAutoScroll?(direction: .left)
+                //代理设置如果允许滑动
+                if multipleDelegate?.collectionShouldAutoScroll?(direction: .left) ?? true {
+                    //如果需要向左滑动
+                    collection.scrollViewMoveTo(direction: .left, completion: collectionAutoMovingRecursionBlock)
+                }
             } else if collection.needToMove(.bottom, currentPoint: location) {
-                //如果需要向下滑动
-                collection.scrollViewMoveTo(direction: .bottom, completion: collectionAutoMovingRecursionBlock)
+                //代理传出将要滑动
+                multipleDelegate?.collectionWillAutoScroll?(direction: .bottom)
+                //代理设置如果允许滑动
+                if multipleDelegate?.collectionShouldAutoScroll?(direction: .bottom) ?? true {
+                    //如果需要向下滑动
+                    collection.scrollViewMoveTo(direction: .bottom, completion: collectionAutoMovingRecursionBlock)
+                }
             } else if collection.needToMove(.right, currentPoint: location) {
-                //如果需要向右滑动
-                collection.scrollViewMoveTo(direction: .right, completion: collectionAutoMovingRecursionBlock)
+                //代理传出将要滑动
+                multipleDelegate?.collectionWillAutoScroll?(direction: .right)
+                //代理设置如果允许滑动
+                if multipleDelegate?.collectionShouldAutoScroll?(direction: .right) ?? true {
+                    //如果需要向右滑动
+                    collection.scrollViewMoveTo(direction: .right, completion: collectionAutoMovingRecursionBlock)
+                }
             } else {
                 //标记为未移动
                 moveFlag = false
